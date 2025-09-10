@@ -61,11 +61,7 @@ fn check_device(device: HidDevice, queries: &[DeviceQuery]) -> Option<HidDevice>
         return None;
     }
 
-    if device.serial_number.is_some() {
-        Some(device)
-    } else {
-        None
-    }
+    Some(device)
 }
 
 /// Returns a list of devices as (Kind, Serial Number) that could be found using hid backend.
@@ -230,12 +226,27 @@ impl Device {
             None => return Err(MirajazzError::DeviceNotFoundError),
         };
 
-        let serial_number = match device.serial_number.clone() {
-            Some(serial) => serial,
-            None => return Err(MirajazzError::InvalidDeviceError),
+        let serial_number = match (device.serial_number.clone(), protocol_version) {
+            // There is pv 1 devices that don't have serial number *at all*
+            //
+            // Because 355499441494 is a hardcoded serial for pv 1 devices,
+            // and Windows also fucks up the serial number for these devices,
+            // just hardcode it on our side ¯\_(ツ)_/¯
+            (_, 1) => "355499441494".to_string(),
+
+            // Everything with pv 2 and greater should have serial
+            (Some(serial), _) => serial,
+
+            // If there is some pv 2+ device without serial number, return an error
+            (None, _) => return Err(MirajazzError::InvalidDeviceError),
         };
 
         let (reader, writer) = device.open().await?;
+
+        assert!(
+            protocol_version != 0,
+            "Minimum supported protocol version is 1"
+        );
 
         assert!(
             protocol_version <= 2,
