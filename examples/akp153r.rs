@@ -6,7 +6,7 @@ use mirajazz::{
 };
 use std::{thread::sleep, time::Duration};
 
-const QUERY: DeviceQuery = DeviceQuery::new(65440, 2, 0x0300, 0x1020);
+const QUERY: DeviceQuery = DeviceQuery::new(65440, 1, 0x0300, 0x1020);
 
 const KEY_COUNT: u8 = 18;
 
@@ -50,7 +50,7 @@ async fn main() -> Result<(), MirajazzError> {
         );
 
         // Connect to the device
-        let device = Device::connect(&dev, 1, false, KEY_COUNT as usize, 0).await?;
+        let device = Device::connect(&dev, 1, KEY_COUNT as usize, 0).await?;
 
         // Print out some info from the device
         println!("Connected to '{}'", device.serial_number());

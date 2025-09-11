@@ -6,7 +6,7 @@ use mirajazz::{
 };
 use std::{thread::sleep, time::Duration};
 
-const QUERY: DeviceQuery = DeviceQuery::new(65440, 2, 0x6603, 0x1000);
+const QUERY: DeviceQuery = DeviceQuery::new(65440, 1, 0x6603, 0x1000);
 
 #[repr(u8)]
 enum N1Mode {
@@ -39,7 +39,6 @@ const TOP_ROW_IMAGE_FORMAT: ImageFormat = ImageFormat {
     mirror: ImageMirroring::None,
 };
 
-
 #[tokio::main]
 async fn main() -> Result<(), MirajazzError> {
     println!("Mirajazz example for MiraBox N1");
@@ -53,7 +52,7 @@ async fn main() -> Result<(), MirajazzError> {
         );
 
         // Connect to the device
-        let device = Device::connect(&dev, true, true, KEY_COUNT as usize, 0).await?;
+        let device = Device::connect(&dev, 3, KEY_COUNT as usize, 0).await?;
         device.set_mode(N1Mode::Software as u8).await?;
         sleep(Duration::from_millis(50));
 

@@ -5,7 +5,7 @@ use mirajazz::{
     types::{DeviceInput, ImageFormat, ImageMirroring, ImageMode, ImageRotation},
 };
 
-const QUERY: DeviceQuery = DeviceQuery::new(65440, 2, 0x0300, 0x1003);
+const QUERY: DeviceQuery = DeviceQuery::new(65440, 1, 0x0300, 0x1003);
 
 const IMAGE_FORMAT: ImageFormat = ImageFormat {
     mode: ImageMode::JPEG,
@@ -27,7 +27,7 @@ async fn main() -> Result<(), MirajazzError> {
         );
 
         // Connect to the device
-        let device = Device::connect(&dev, 2, false, 9, 3).await?;
+        let device = Device::connect(&dev, 2, 9, 3).await?;
 
         // Print out some info from the device
         println!("Connected to '{}'", device.serial_number());
