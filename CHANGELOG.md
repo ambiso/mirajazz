@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2025-09-11
+
+### 🚜 Refactor
+
+- [**breaking**] Move supports_both_states to a separate protocol_version 3, added fallback protocol_version 0 for pv 1 devices with really old firmware
+
+### 📚 Documentation
+
+- Added protocol versions documentation
+
+### ⚙️ Miscellaneous Tasks
+
+- *(example)* Update examples
+
 ## [0.8.1] - 2025-09-10
 
 ### 🐛 Bug Fixes
