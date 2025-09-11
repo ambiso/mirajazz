@@ -191,8 +191,6 @@ pub struct Device {
     pub serial_number: String,
     /// Protocol version
     protocol_version: usize,
-    /// Emits two events for buttons or not
-    supports_both_states: bool,
     /// Number of keys
     key_count: usize,
     /// Number of encoders
@@ -215,10 +213,19 @@ impl Device {
     pub async fn connect(
         dev: &HidDeviceInfo,
         protocol_version: usize,
-        supports_both_states: bool,
         key_count: usize,
         encoder_count: usize,
     ) -> Result<Device, MirajazzError> {
+        assert!(
+            protocol_version != 0,
+            "Use protocol_version 1 instead of 0. Protocol version 0 will be set automatically when needed"
+        );
+
+        assert!(
+            protocol_version <= 3,
+            "Maximum supported protocol version is 3"
+        );
+
         let device = HidBackend::default().query_devices(&dev.id).await?.last();
 
         let device = match device {
@@ -243,27 +250,26 @@ impl Device {
 
         let (reader, writer) = device.open().await?;
 
-        assert!(
-            protocol_version != 0,
-            "Minimum supported protocol version is 1"
-        );
-
-        assert!(
-            protocol_version <= 2,
-            "Maximum supported protocol version is 2"
-        );
+        // If device is missing serial number, it's probably firmware `1.0.0.0`
+        // In this case, set protocol version to 0
+        //
+        // This protocol version can only be set automatically
+        let override_protocol_version = if device.serial_number.is_none() {
+            0
+        } else {
+            protocol_version // Otherwise, keep provided protocol version
+        };
 
         Ok(Device {
             vid: device.vendor_id,
             pid: device.product_id,
             serial_number,
-            protocol_version,
-            supports_both_states,
+            protocol_version: override_protocol_version,
             key_count,
             encoder_count,
             reader: Arc::new(Mutex::new(reader)),
             writer: Arc::new(Mutex::new(writer)),
-            packet_size: if protocol_version == 2 { 1024 } else { 512 },
+            packet_size: if protocol_version >= 2 { 1024 } else { 512 },
             image_cache: Mutex::new(vec![]),
             initialized: false.into(),
         })
@@ -304,11 +310,6 @@ impl Device {
         self.write_extended_data(&mut buf).await?;
 
         Ok(())
-    }
-
-    /// Returns value of `supports_both_states` field
-    pub fn supports_both_states(&self) -> bool {
-        self.supports_both_states
     }
 
     /// Resets the device
@@ -408,8 +409,8 @@ impl Device {
 
         self.clear_button_image(0xFF).await?;
 
-        if self.protocol_version == 2 {
-            // Protocol v2 requires STP to commit clearing the screen
+        if self.protocol_version >= 2 {
+            // Protocol v2/v3 requires STP to commit clearing the screen
             let mut buf = vec![0x00, 0x43, 0x52, 0x54, 0x00, 0x00, 0x53, 0x54, 0x50];
 
             self.write_extended_data(&mut buf).await?;
@@ -504,12 +505,12 @@ impl Device {
     ) -> Arc<DeviceStateReader> {
         #[allow(clippy::arc_with_non_send_sync)]
         Arc::new(DeviceStateReader {
+            protocol_version: self.protocol_version,
             reader: self.reader.clone(),
             states: Mutex::new(DeviceState {
                 buttons: vec![false; self.key_count],
                 encoders: vec![false; self.encoder_count],
             }),
-            supports_both_states: self.supports_both_states,
             process_input,
         })
     }

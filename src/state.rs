@@ -34,13 +34,18 @@ pub struct DeviceState {
 /// Button reader that keeps state of the device and returns events instead of full states
 /// You can only have one active reader per device at a time
 pub struct DeviceStateReader {
+    pub protocol_version: usize,
     pub reader: Arc<Mutex<DeviceReader>>,
     pub states: Mutex<DeviceState>,
     pub process_input: fn(u8, u8) -> Result<DeviceInput, MirajazzError>,
-    pub supports_both_states: bool,
 }
 
 impl DeviceStateReader {
+    /// Checks if protocol version supports both keypress states
+    pub fn supports_both_states(&self) -> bool {
+        self.protocol_version > 2
+    }
+
     /// Reads data from device
     pub async fn raw_read_data(&self, length: usize) -> Result<Vec<u8>, MirajazzError> {
         let mut buf = vec![0u8; length];
@@ -97,11 +102,13 @@ impl DeviceStateReader {
 
         let data = data.unwrap();
 
-        if data[0] == 0 {
+        // Skip this check if protocol version is 0, because devices with very old firmware
+        // do not prefix packets with ACK (65 67 75)
+        if !data.starts_with(&[65, 67, 75]) && self.protocol_version > 0 {
             return Ok(DeviceInput::NoData);
         }
 
-        let state = if self.supports_both_states {
+        let state = if self.supports_both_states() {
             data[10]
         } else {
             0x1u8
@@ -129,7 +136,7 @@ impl DeviceStateReader {
                 for (index, (their, mine)) in
                     zip(buttons.iter(), my_states.buttons.iter()).enumerate()
                 {
-                    if !self.supports_both_states {
+                    if !self.supports_both_states() {
                         if *their {
                             updates.push(DeviceStateUpdate::ButtonDown(index as u8));
                             updates.push(DeviceStateUpdate::ButtonUp(index as u8));
@@ -150,7 +157,7 @@ impl DeviceStateReader {
                 for (index, (their, mine)) in
                     zip(encoders.iter(), my_states.encoders.iter()).enumerate()
                 {
-                    if !self.supports_both_states {
+                    if !self.supports_both_states() {
                         if *their {
                             updates.push(DeviceStateUpdate::EncoderDown(index as u8));
                             updates.push(DeviceStateUpdate::EncoderUp(index as u8));
