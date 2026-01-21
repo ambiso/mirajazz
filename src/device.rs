@@ -267,7 +267,7 @@ impl Device {
             pid: device.product_id,
             serial_number,
             protocol_version: override_protocol_version,
-            supports_both_encoder_states: override_protocol_version >= 2,
+            supports_both_encoder_states: override_protocol_version > 2,
             key_count,
             encoder_count,
             reader: Arc::new(Mutex::new(reader)),
