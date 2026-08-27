@@ -513,6 +513,16 @@ impl Device {
     pub async fn shutdown(&self) -> Result<(), MirajazzError> {
         self.initialize().await?;
 
+        // Clearing the displays leaves the encoder LEDs lit, so turn those
+        // off first. Best-effort: devices whose encoders have no LEDs may
+        // reject these, and that should not stop the shutdown itself.
+        if self.encoder_count > 0 {
+            let _ = self
+                .set_led_colors(&vec![[0, 0, 0]; self.encoder_count])
+                .await;
+            let _ = self.set_led_brightness(0).await;
+        }
+
         let mut buf = vec![
             0x00, 0x43, 0x52, 0x54, 0x00, 0x00, 0x43, 0x4c, 0x45, 0x00, 0x00, 0x44, 0x43,
         ];
