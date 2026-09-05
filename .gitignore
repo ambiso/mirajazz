@@ -1,1 +1,4 @@
 /target
+/*dump-*
+/log*.txt
+context.md
